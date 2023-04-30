@@ -14,7 +14,7 @@ CC = gcc
 LD = gcc
 AR = ar
 
-ftelnet:  ftelnet.o ftty.o frbuff.o ftelnet_cmd.o f_list.o fprintbuff.o mkaddr.o
+ftelnet:  ftelnet.o ftty.o frbuff.o ftelnet_cmd.o flist.o fprintbuff.o mkaddr.o
 	$(LD) $(LDFLAGS1)  -o ftelnet ftelnet.o ftelnet_cmd.o flist.o fprintbuff.o mkaddr.o frbuff.o ftty.o -lpthread
 
 

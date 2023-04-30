@@ -675,7 +675,7 @@ char NC[]      = { 0x1b,'[','0','m',0x00 };
 
 ftelnet_data_t * gp_telnet;
 
-uint64_t  g_Debug = 2;
+uint64_t  g_Debug = 0;
 uint64_t  g_error = 0;
 // need to use the escape key to send special charactes
 // this is because getchar does not return Ctrl Sequences
@@ -702,19 +702,35 @@ bail(const char *on_what) {
 }
 
 
+void print_usage(void)
+{
+   printf("ftelnet- App /src   \n");
+   printf("-i <server_ip_addr>   EG: 10.75.1.77 (default)\n");
+   printf("-p <server_port>      EG: 7011       (default)\n");
+   printf("-l                    open/append log file \n");
+   printf("-v <value>            Verbose Setting  \n");
+   printf("-d <0xDebugFlags>     Debug Flags  \n");
+   printf("example: \n");
+   printf("./ftelnet   -i 10.75.1.79 -p 23  -d 2 -v 1 \n");
+   printf("./ftelnet  \n");
 
+   printf("\n");
+}
+
+char     g_outFileName[1024];
+int      g_WriteLogFile = 0;
+FILE *   g_fpOut;
+uint64_t g_Verbose;
 
 int main(int argc, char ** argv)
 {
-//    int mode  ;
+      int option  ;
 //    int64_t err;
       char target_ip[64] ={0};
       int  target_port = 0;
 //    mode=3;
 //    if ( argc >= 2) mode=atoi(argv[1]);
 
-    strcpy(target_ip,"10.75.1.77");
-    target_port = 7011;;
  #if 0
     strcpy(target_ip,"10.75.1.79");   // 4 port power controller
     target_port = 23 ;
@@ -722,7 +738,55 @@ int main(int argc, char ** argv)
     strcpy(target_ip,"10.75.1.77");   // terminal server spot
     target_port = 7011;;
 #endif
-    
+    strcpy(g_outFileName,"log.txt");    
+
+while ((option = getopt(argc, argv,"v:li:d:p:ih")) != -1) {
+       switch (option) {
+//          case 'm' : g_Menu=1 ;          // configure to bind w/ SO_REUSEADDR
+//                break;
+            case 'v' : g_Verbose=atoi(optarg) ;   // Set the verbose level
+                break;
+            case 'l' : g_WriteLogFile = 1; // write/append all  communications to log
+                break;
+            case 'i' : strcpy(target_ip,optarg);       // server ip addr
+                break;
+            case 'p' : target_port = atoi(optarg);    // server  port
+                break;
+            case 'd' : g_Debug = atoi(optarg);        // g_Debug setting
+                break;
+            case 'h' :                               // Print Help
+            default:
+                print_usage();
+//                exit(EXIT_FAILURE);
+                return(1);
+       }
+   }
+
+   printf("Command Line Arguments:\n");
+   printf("       %24s Telnet server IP address\n" ,target_ip);
+   printf("       %24d Telnet server port\n"       ,target_port);
+   printf("       %24d Verbose\n"         ,(int)g_Verbose);
+   printf("  0x%024lx   Debug\n"          ,g_Debug);
+   printf("       %24d Log Enabled\n"     ,g_WriteLogFile);
+   printf("       %24s Log File Name\n"   ,g_outFileName);
+
+   if ( g_WriteLogFile != 0)
+   {
+//
+//  Open an Output LOG FIle if give a name
+//
+       g_fpOut = fopen (g_outFileName, "a+");
+       if (g_fpOut == NULL)
+       {
+           printf ("Unable to open file %s\n", g_outFileName);
+           return (-5);
+       }
+   }
+
+
+
+
+
 
 printf(" Target:\n");
 printf("     IP: %s\n",target_ip);
@@ -809,6 +873,12 @@ printf("   Port: %d\n",target_port);
 
      cleanup(gp_telnet);
      restore_tty();
+
+     if (g_fpOut != NULL)
+     {
+          fclose (g_fpOut );
+     }
+
      printf("\ndone\n");
 
      return 0;
