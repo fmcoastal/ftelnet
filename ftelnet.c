@@ -32,6 +32,7 @@ static void  bail(const char *on_what);
 #define STANDALONE_TELNET
 #ifdef STANDALONE_TELNET
 
+uint64_t fatox64(int8_t* string);
 kb_data * gpkb;
 #endif
 
@@ -132,7 +133,7 @@ void *  ftelnet_rx_thread(void* arg)
                     if ((( (uint8_t)dgram[i] == (uint8_t)0xff ) && (i < z )) || ( i == z ) )
                     {
                        cmd.sz=j;
-                       if (g_Debug > 0)
+                       DEBUG ( DEBUG_RX_FTELNET_CMD  ) 
                        {
                            printf("%s",CYAN);
                            printf("[%s] cmd Message \n",__FUNCTION__);
@@ -215,7 +216,7 @@ void *  ftelnet_tx_thread(void* arg)
         err =ListPopHead( &(p->p_cmd_snd_list),(void *)  &cmd_out, ft_cmd_copy);
         if ( err != LST_LIST_IS_EMPTY )
         {
-             if (g_Debug > 1 )
+             DEBUG( DEBUG_TX_FTELNET_CMD )
              {
 //               WAI();
                  printf("%s",GREEN);
@@ -316,7 +317,7 @@ int64_t  _ftelnet_send_ctrl_message(ftelnet_data_t *p, ftelnet_cmd_t *cmd )
         printf ("[%s]  ListPushHead returned error %ld  \n",__FUNCTION__,err );
 
     // show what is pending to be sent.
-    if ( g_Debug > 1 )
+    DEBUG( DEBUG_TX_FTELNET_CMD )
     {
         printf("%s",MAGENTA);
         ListPrint(  p->p_cmd_snd_list , &ft_cmd_print  );
@@ -514,14 +515,22 @@ int ftelnet_open_channel(ftelnet_data_t * p)
 int ftelnet_get_c(ftelnet_data_t * p, char * c)
 {
    char lc;
-   char *lpc=&lc;
+   char * lpc = &lc;
    int r;
-
-   r = RBuffFetch(p->prx_buf, (void **) (&lpc) );
+  r = RBuffFetch(p->prx_buf, (void **) (&lpc) );
    if ( r == 0)
    {
-           *c=*lpc;
-           return 0;  // one character received
+        DEBUG( DEBUG_RX_FTELNET )
+        {
+           printf("%s",CYAN);
+          // WAI()
+           printf("[%s] fetched %c  0x%02x\n",__FUNCTION__,*lpc,*lpc);
+           printf("[%s] fetched %c  0x%02x\n",__FUNCTION__,lc,lc);
+           printf("%s",NC);
+           
+        }
+        *c = *lpc;
+        return 0;  // one character received
    }        
    return 1;  // no data present
 }
@@ -610,7 +619,7 @@ int ServiceReceivedTelnetCmds( ftelnet_data_t *p )
         error =ListPopHead( &(p->p_cmd_rcv_list),(void *) &rx_cmd, ft_cmd_copy);
         if ( error != LST_LIST_IS_EMPTY )
         {
-            if (g_Debug > 1 )
+            DEBUG ( DEBUG_TX_FTELNET_CMD  )
             {
                  WAIC(YELLOW);
                  //printf("[%s] cmd from remote \n",__FUNCTION__);            
@@ -752,7 +761,7 @@ while ((option = getopt(argc, argv,"v:li:d:p:ih")) != -1) {
                 break;
             case 'p' : target_port = atoi(optarg);    // server  port
                 break;
-            case 'd' : g_Debug = atoi(optarg);        // g_Debug setting
+            case 'd' : g_Debug = fatox64((int8_t*)optarg);        // g_Debug setting
                 break;
             case 'h' :                               // Print Help
             default:
@@ -782,16 +791,6 @@ while ((option = getopt(argc, argv,"v:li:d:p:ih")) != -1) {
            return (-5);
        }
    }
-
-
-
-
-
-
-printf(" Target:\n");
-printf("     IP: %s\n",target_ip);
-printf("   Port: %d\n",target_port);
-
 
     gpkb = ftty_kb_create();
     ftty_kb_start( gpkb );
@@ -844,32 +843,27 @@ printf("   Port: %d\n",target_port);
                           printf("<%02x>",c);
                   else
                       printf("%c",c);
-  //                printf("in:  %c %x \n",*pc,*pc);
-  //                if ( c == 0x31) 
                   ftelnet_put_c(gp_telnet, c );
                   if ( c == 0x03) done =1;
               }
-
+              
               r = ftelnet_get_c( gp_telnet, &c);
               if ( r == 0)
-              {
-                  printf("%c",c);
+              {  
+//                  printf( "[%s] char * %p   %c \n",__FUNCTION__,&c, c);
+                  printf( "%c" , c);
+                  fflush( stdout );
               }
               ServiceReceivedTelnetCmds(gp_telnet);
 
-
-
            }
-
-}
+     }
 
      // need to make shure the threads are closed before calling below
      ftty_kb_stop( gpkb );
      ftty_kb_distroy(  gpkb );
 
      ftelnet_distroy_session ( gp_telnet );
-
-
 
      cleanup(gp_telnet);
      restore_tty();
@@ -884,6 +878,54 @@ printf("   Port: %d\n",target_port);
      return 0;
 
  }
+
+
+uint64_t fatox64(int8_t* string)
+{
+    uint64_t result = 0;
+    int64_t i = 0;
+    int64_t done = 0;
+    uint8_t in;
+    int64_t length = (int32_t)strlen((char *)string) + 1;
+
+    while( (done == 0) && (i < length))
+    {
+        in = *(string+i);
+        if( in == 0x00)
+        {
+            done = 1;
+        }
+        else
+        {
+            if (( in >= '0') &&( in <= '9'))
+            {
+                result <<= 4;
+                result += in & 0x0f;
+            }
+            else if( (( in >= 'a') &&( in <= 'f')) ||
+                (( in >= 'A') &&( in <= 'F')) )
+            {
+                result <<= 4;
+                result += ((in & 0x0f) + 9);
+            }
+            else if( ( in == 'x') || ( in == 'X'))
+            {
+
+            }
+            else
+            {
+                done = 1; // unrecognized character
+            }
+            i++;
+        }
+    }
+    return result;
+}
+
+
+
+
+
 
 #endif
 

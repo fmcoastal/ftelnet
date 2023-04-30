@@ -4,13 +4,16 @@
 // THIS FILE IS DIFFERENT FOR EACH Project I DO;
 
 
-#define DEBUG_CFG_DATA_SSH  0x0001
-#define DEBUG_TX_RX_SSH     0x0002
-#define DEBUG_RX_RS232      0x0004
-#define DEBUG_TX_RS232      0x0008
-#define DEBUG_RX_KB         0x0010
-#define DEBUG_RX_FTELNET    0x0020
-#define DEBUG_TX_FTELNET    0x0040
+#define DEBUG_CFG_DATA_SSH     0x0001
+#define DEBUG_TX_RX_SSH        0x0002
+#define DEBUG_RX_RS232         0x0004
+#define DEBUG_TX_RS232         0x0008
+#define DEBUG_RX_KB            0x0010
+#define DEBUG_RX_FTELNET       0x0100
+#define DEBUG_TX_FTELNET       0x0200
+#define DEBUG_RX_FTELNET_CMD   0x0400
+#define DEBUG_TX_FTELNET_CMD   0x0800
+
 
 #define DEBUG(x)   if ((g_Debug & x) == x)
 extern uint64_t  g_Debug ;
