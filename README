@@ -1,0 +1,13 @@
+ https://www.rfc-editor.org/rfc/rfc854.html
+
+
+
+
+
+Need a state machine, queues and strings.  
+Start with tcp socket machine
+
+
+Need a control state machine,
+       tx thread
+       rx thread
